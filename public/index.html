@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mapa Ciudadano PY – v7</title>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+  <link rel="stylesheet" href="style.css"/>
+</head>
+<body class="theme-dark">
+  <div class="app">
+    <header class="hero">
+      <div class="hero-top">
+        <div>
+          <h1>Mapa Ciudadano Paraguay 🇵🇾</h1>
+          <p class="subtitle">
+            Explorá servicios públicos, reciclaje y seguridad de zonas cerca tuyo.
+          </p>
+        </div>
+        <button id="themeToggle" class="theme-toggle" title="Cambiar tema">
+          <span class="theme-icon">🌙</span>
+        </button>
+      </div>
+
+      <div class="controls">
+        <label>Elegí tu ciudad</label>
+        <div class="controls-row">
+          <select id="citySelect">
+            <option value="asuncion">Asunción</option>
+            <option value="cde">Ciudad del Este</option>
+            <option value="encarnacion">Encarnación</option>
+            <option value="villarrica">Villarrica</option>
+          </select>
+          <button id="btnIrCiudad">Ir</button>
+        </div>
+
+        <label class="search-label">O buscá una dirección</label>
+        <div class="controls-row">
+          <input id="searchInput" placeholder="Ej: Barrio San Vicente Asunción"/>
+          <button id="btnBuscarDireccion">Buscar</button>
+        </div>
+      </div>
+
+      <div class="stats">
+        <div class="stat-card">
+          <span class="stat-label">Lugares encontrados</span>
+          <span class="stat-value" id="pointsCount">-</span>
+        </div>
+        <div class="stat-card">
+          <span class="stat-label">Capas activas</span>
+          <span class="stat-value small" id="layersActive">Policías</span>
+        </div>
+      </div>
+    </header>
+
+    <main class="map-section">
+      <section class="filters-card">
+        <div class="filters-header">
+          <h2>Categorías</h2>
+          <div class="filters-actions">
+            <button id="infoButton" class="info-button" title="Información ciudadana">
+              ☰
+            </button>
+            <button id="btnActualizarMapa" class="btn-refresh">🔄 Actualizar mapa</button>
+          </div>
+        </div>
+        <div class="chips-grid">
+          <!-- SOLO esta arranca activa (policías) -->
+          <button class="chip active" data-layer="police">
+            <span class="chip-icon">👮‍♂️</span>
+            <span class="chip-label">Policías</span>
+          </button>
+          <button class="chip" data-layer="hospital">
+            <span class="chip-icon">🏥</span>
+            <span class="chip-label">Hospitales</span>
+          </button>
+          <button class="chip" data-layer="fire">
+            <span class="chip-icon">🚒</span>
+            <span class="chip-label">Bomberos</span>
+          </button>
+          <button class="chip" data-layer="supermarket">
+            <span class="chip-icon">🛒</span>
+            <span class="chip-label">Supermercados</span>
+          </button>
+          <button class="chip" data-layer="park">
+            <span class="chip-icon">🌳</span>
+            <span class="chip-label">Plazas</span>
+          </button>
+          <button class="chip" data-layer="school">
+            <span class="chip-icon">🏫</span>
+            <span class="chip-label">Colegios</span>
+          </button>
+          <button class="chip" data-layer="recycling">
+            <span class="chip-icon">♻️</span>
+            <span class="chip-label">Reciclaje</span>
+          </button>
+          <button class="chip" data-layer="heat">
+            <span class="chip-icon">🛡️</span>
+            <span class="chip-label">Seguridad de zonas</span>
+          </button>
+        </div>
+      </section>
+
+      <div class="map-wrapper">
+        <div id="map"></div>
+        <div id="loader" class="loader hidden">
+          <div class="spinner"></div>
+          <span>Cargando datos ciudadanos…</span>
+        </div>
+      </div>
+
+      <section class="legend">
+        <h2>Ayuda</h2>
+        <ul>
+          <li><span class="marker-icon marker-police"></span> Policía</li>
+          <li><span class="marker-icon marker-hospital"></span> Hospital / Clínica</li>
+          <li><span class="marker-icon marker-fire"></span> Bomberos</li>
+          <li><span class="marker-icon marker-supermarket"></span> Supermercado</li>
+          <li><span class="marker-icon marker-park"></span> Plaza / Área verde</li>
+          <li><span class="marker-icon marker-school"></span> Colegios / Educación</li>
+          <li><span class="marker-icon marker-recycling"></span> Centros de reciclaje</li>
+          <li><span class="heat-badge"></span> Seguridad de zonas (servicios vs. ausencia)</li>
+        </ul>
+        <p class="footnote">
+          Mové el mapa hasta tu barrio, elegí las categorías y tocá
+          <strong>“Actualizar mapa”</strong> para ver los servicios ciudadanos cercanos.
+        </p>
+      </section>
+    </main>
+  </div>
+
+  <!-- Modal de información ciudadana -->
+  <div id="infoModal" class="modal hidden">
+    <div class="modal-backdrop"></div>
+    <div class="modal-dialog">
+      <div class="modal-header">
+        <h2>Información sobre el mapa</h2>
+        <button id="modalClose" class="modal-close" aria-label="Cerrar">✕</button>
+      </div>
+      <div class="modal-body">
+        <p>
+          Este mapa usa datos abiertos de <strong>OpenStreetMap</strong> y la API
+          de <strong>Overpass</strong> para mostrar servicios ciudadanos en Paraguay.
+          No reemplaza información oficial ni reportes de seguridad.
+        </p>
+        <ul>
+          <li><strong>Policías / Bomberos:</strong> ayudan a estimar presencia de respuesta ante emergencias.</li>
+          <li><strong>Hospitales:</strong> indican opciones de atención médica cercana.</li>
+          <li><strong>Supermercados:</strong> muestran zonas con servicios básicos y movimiento.</li>
+          <li><strong>Plazas:</strong> representan espacios públicos y áreas verdes.</li>
+          <li><strong>Colegios:</strong> señalan zonas principalmente familiares y escolares.</li>
+          <li>
+            <strong>Reciclaje:</strong> centros que reciben materiales como vidrio, papel/cartón, plástico,
+            metales, pilas, neumáticos, según estén mapeados en OSM.
+          </li>
+          <li>
+            <strong>Seguridad de zonas:</strong> mapa de calor basado en la presencia de estos servicios.
+            <u>No es un indicador oficial de criminalidad</u>, es solo una aproximación de “sensación de servicio”.
+          </li>
+        </ul>
+        <p class="modal-note">
+          Tip: mové el mapa, seleccioná las capas y luego usá
+          <strong>“Actualizar mapa”</strong> para refrescar la información del área que estás viendo.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://unpkg.com/leaflet.heat/dist/leaflet-heat.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
